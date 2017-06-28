@@ -20,6 +20,8 @@ configure do
   STORE = EventBus.new
   STORE.add_consumer(PGEventStoreConsumer.new(DB[:events]))
   STORE.add_consumer(UserRegistrationConsumer.new(DB[:users], DB[:user_password_change_requests]))
+
+  enable :sessions
 end
 
 get "/" do
@@ -27,7 +29,7 @@ get "/" do
 end
 
 post "/user/request-change-password" do
-  event = UserPasswordChangeRequested.new(
+  event = create_event(UserPasswordChangeRequested,
     email: params[:user][:email],
   )
   store.publish(event)
@@ -36,7 +38,7 @@ end
 
 post "/user/reset-password" do
   if row = DB[:user_password_change_requests][token: params[:user][:token]]
-    event = UserPasswordReset.new(
+    event = create_event(UserPasswordReset,
       email: row.fetch(:email),
       token: row.fetch(:token),
       new_encrypted_password: params[:user][:password],
@@ -51,12 +53,18 @@ post "/user/reset-password" do
 end
 
 post "/signup" do
-  event = UserRegistered.new(
-    :email              => params[:user][:email],
-    :name               => params[:user][:name],
-    :encrypted_password => params[:user][:password].succ,
+  event = create_event(UserRegistered,
+    email: params[:user][:email],
+    name: params[:user][:name],
+    encrypted_password: params[:user][:password].succ,
   )
 
   store.publish(event)
   redirect "/"
+end
+
+helpers do
+  def create_event(klass, params)
+    klass.new( {request_ip: request.ip, user_agent: request.user_agent, session_id: session.id}.merge(params) )
+  end
 end
