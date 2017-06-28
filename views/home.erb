@@ -9,3 +9,21 @@
 
   <input type="submit" value="Register">
 </form>
+
+<h1>Request Reset Password Token</h1>
+<form method="post" action="/user/request-change-password">
+  <label>Email <input type="email" name="user[email]" value=""></label>
+  <br>
+
+  <input type="submit" value="Register">
+</form>
+
+<h1>Reset Password</h1>
+<form method="post" action="/user/reset-password">
+  <label>Token <input type="text" name="user[token]" value=""></label>
+  <br>
+  <label>Password <input type="password" name="user[password]" value=""></label>
+  <br>
+
+  <input type="submit" value="Register">
+</form>

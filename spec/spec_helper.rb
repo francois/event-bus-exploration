@@ -5,18 +5,9 @@ require "dotenv"
 Dotenv.load ".env.test"
 
 require "database_cleaner"
-require "logger"
 require "rspec"
 
-LOGGER = Logger.new("log/test.log")
-LOGGER.level = Logger::DEBUG
-
-def logger
-  LOGGER
-end
-
-DB = Sequel.connect(ENV.fetch("DATABASE_URL"), logger: logger)
-DB.extension :pg_array, :pg_json
+require "connections/database"
 
 RSpec.configure do |config|
   config.before(:suite) do
