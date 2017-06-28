@@ -12,14 +12,14 @@ require "user_registered"
 require "user_registration_consumer"
 require "user_password_reset"
 
-def store
-  STORE
+def event_bus
+  EVENT_BUS
 end
 
 configure do
-  STORE = EventBus.new
-  STORE.add_consumer(PGEventStoreConsumer.new(DB[:events]))
-  STORE.add_consumer(UserRegistrationConsumer.new(DB[:users], DB[:user_password_change_requests]))
+  EVENT_BUS = EventBus.new
+  EVENT_BUS.add_consumer(PGEventStoreConsumer.new(DB[:events]))
+  EVENT_BUS.add_consumer(UserRegistrationConsumer.new(DB[:users], DB[:user_password_change_requests]))
 
   enable :sessions
 end
@@ -28,11 +28,22 @@ get "/" do
   erb :home
 end
 
+post "/signup" do
+  event = create_event(UserRegistered,
+    email: params[:user][:email],
+    name: params[:user][:name],
+    encrypted_password: params[:user][:password].succ,
+  )
+
+  event_bus.publish(event)
+  redirect "/"
+end
+
 post "/user/request-change-password" do
   event = create_event(UserPasswordChangeRequested,
     email: params[:user][:email],
   )
-  store.publish(event)
+  event_bus.publish(event)
   redirect "/"
 end
 
@@ -44,22 +55,11 @@ post "/user/reset-password" do
       new_encrypted_password: params[:user][:password],
     )
 
-    store.publish(event)
+    event_bus.publish(event)
   else
     logger.warn "Failed to find token #{params[:user][:token]}"
   end
 
-  redirect "/"
-end
-
-post "/signup" do
-  event = create_event(UserRegistered,
-    email: params[:user][:email],
-    name: params[:user][:name],
-    encrypted_password: params[:user][:password].succ,
-  )
-
-  store.publish(event)
   redirect "/"
 end
 
