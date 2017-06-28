@@ -4,7 +4,7 @@ Bundler.require :default, :development
 require "dotenv"
 Dotenv.load ".env", ".env.development"
 
-require "event_store"
+require "event_bus"
 require "pg_event_serializer"
 require "user_registered"
 require "user_registration_consumer"
@@ -24,7 +24,7 @@ configure do
   DB = Sequel.connect(ENV.fetch("DATABASE_URL"), logger: logger)
   DB.extension :pg_array, :pg_json
 
-  STORE = EventStore.new
+  STORE = EventBus.new
   STORE.add_consumer(PGEventStoreConsumer.new(DB[:events]))
   STORE.add_consumer(UserRegistrationConsumer.new(DB[:users]))
 end

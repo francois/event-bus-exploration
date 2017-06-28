@@ -1,4 +1,4 @@
-class EventStore
+class EventBus
   def initialize
     @consumers = []
   end

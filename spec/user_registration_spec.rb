@@ -1,10 +1,10 @@
-require "event_store"
+require "event_bus"
 require "spec_helper"
 require "user_registered"
 require "user_registration_consumer"
 
 RSpec.describe "user registration" do
-  let(:store)    { EventStore.new }
+  let(:store)    { EventBus.new }
   let(:consumer) { UserRegistrationConsumer.new(DB[:users]) }
   before(:each)  { store.add_consumer(consumer) }
 
