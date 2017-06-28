@@ -18,7 +18,7 @@ def store
 end
 
 configure do
-  LOGGER = Logger.new("log/test.log")
+  LOGGER = Logger.new(STDERR)
   LOGGER.level = Logger::DEBUG
 
   DB = Sequel.connect(ENV.fetch("DATABASE_URL"), logger: logger)
