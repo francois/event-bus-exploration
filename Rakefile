@@ -13,3 +13,9 @@ namespace :db do
     Rake::Task["db:migrate"].invoke
   end
 end
+
+task :spec do
+  sh "rspec"
+end
+
+task :default => :spec
