@@ -1,26 +1,26 @@
 class UserRegistrationConsumer
-  def initialize(users, password_resets)
-    @users = users
-    @password_resets = password_resets
+  def initialize(repository)
+    @repository = repository
   end
 
   def consume_user_registered(event)
-    @users.insert(
+    @repository.create_user(
       email: event.email,
       encrypted_password: event.encrypted_password,
       name: event.name,
+      user_slug: event.user_slug,
     )
   end
 
   def consume_user_password_change_requested(event)
-    @password_resets.insert(
+    @repository.create_user_password_change_request(
       email: event.email,
       token: event.token,
     )
   end
 
   def consume_user_password_reset(event)
-    @password_resets.filter(token: event.token).delete
-    @users.filter(email: event.email).update(encrypted_password: event.new_encrypted_password)
+    user_password_change_request = @repository.delete_user_password_change_requests_by_token(event.token)
+    @repository.update_user(user_password_change_request.user_id, encrypted_password: event.new_encrypted_password)
   end
 end

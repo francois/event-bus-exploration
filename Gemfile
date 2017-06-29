@@ -10,6 +10,7 @@ gem "sequel_pg", require: false
 gem "sinatra"
 
 group :development, :test do
+  gem "byebug"
   gem "database_cleaner"
   gem "dotenv"
   gem "rspec"

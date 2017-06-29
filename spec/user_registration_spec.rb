@@ -1,3 +1,4 @@
+require "repository"
 require "spec_helper"
 require "user_password_change_requested"
 require "user_password_reset"
@@ -5,59 +6,65 @@ require "user_registered"
 require "user_registration_consumer"
 
 RSpec.describe UserRegistrationConsumer do
-  let(:consumer) { UserRegistrationConsumer.new(DB[:users], DB[:user_password_change_requests]) }
+  let(:repository) { spy(Repository) }
+  subject { UserRegistrationConsumer.new(repository) }
 
   describe UserRegistered do
-    it "writes to the event to the users table" do
-      consumer.consume_user_registered(UserRegistered.new(
+    it "delegates writing the user to the repository" do
+      event = UserRegistered.new(
         email: "francois@teksol.info",
         encrypted_password: "complex encryption technology",
         name: "François Beausoleil",
-      ))
+      )
 
-      expect(DB[:users][email: "francois@teksol.info"]).not_to be_nil
+      subject.consume_user_registered(event)
+
+      expect(repository).to have_received(:create_user).with(
+        email: "francois@teksol.info",
+        name: "François Beausoleil",
+        encrypted_password: "complex encryption technology",
+        user_slug: event.user_slug).once
     end
   end
 
   describe UserPasswordChangeRequested do
-    before(:each) do
-      consumer.consume_user_registered(
-        UserRegistered.new(
-          email: "john@smith.org",
-          name: "John Smith",
-          encrypted_password: "john's password",
-        )
-      )
-    end
-
-    it "writes the event to the user_password_change_requests table" do
-      consumer.consume_user_password_change_requested(UserPasswordChangeRequested.new(
+    it "delegates writing the user password change to the repository" do
+      event = UserPasswordChangeRequested.new(
         email: "john@smith.org",
         token: "a token",
-      ))
+      )
+      subject.consume_user_password_change_requested(event)
 
-      expect(DB[:user_password_change_requests][email: "john@smith.org"][:token]).to eq("a token")
+      expect(repository).to have_received(:create_user_password_change_request).with(
+        email: "john@smith.org",
+        token: "a token",
+      ).once
     end
   end
 
   describe UserPasswordReset do
-    let(:email) { "jane@smith.org" }
-    let(:token) { "some token" }
+    let(:user_id) { 2334 }
+    let(:email)   { "jane@smith.org" }
+    let(:token)   { "some token" }
 
-    let(:user_registered)         { UserRegistered.new(email: email, name: "Jane Smith", encrypted_password: "original") }
-    let(:password_change_request) { UserPasswordChangeRequested.new(email: email, token: token) }
+    let(:user_password_reset) { UserPasswordReset.new(user_id: user_id, token: token, new_encrypted_password: "new password") }
 
-    before(:each) do
-      consumer.consume_user_registered(user_registered)
-      consumer.consume_user_password_change_requested(password_change_request)
+    it "deletes the password change request with the token" do
+      subject.consume_user_password_reset(user_password_reset)
+      expect(repository).to have_received(:delete_user_password_change_requests_by_token).with(token).once
     end
 
-    it "replaces the existing encrypted_password on the user with the new_encrypted_password" do
-      expect{ consumer.consume_user_password_reset(UserPasswordReset.new(email: email, token: token, new_encrypted_password: "changed")) }.to change{ DB[:users][email: email][:encrypted_password] }.from("original").to("changed")
-    end
+    it "changes the updates the user's password" do
+      allow(repository).to receive(:delete_user_password_change_requests_by_token).
+        and_return(UserPasswordChangeRequest.new(
+          user_password_change_request_id: 203,
+          user_id: user_id,
+          token: token,
+          user_slug: "dg",
+      ))
 
-    it "deletes the one-time password in user_password_change_requests" do
-      expect{ consumer.consume_user_password_reset(UserPasswordReset.new(email: email, token: token, new_encrypted_password: "changed")) }.to change{ DB[:user_password_change_requests][email: email] }.to(nil)
+      subject.consume_user_password_reset(user_password_reset)
+      expect(repository).to have_received(:update_user).with(user_id, encrypted_password: "new password").once
     end
   end
 end

@@ -16,10 +16,14 @@ def event_bus
   EVENT_BUS
 end
 
+def repository
+  REPOSITORY
+end
+
 configure do
   EVENT_BUS = EventBus.new
-  EVENT_BUS.add_consumer(PGEventStoreConsumer.new(DB[:events]))
-  EVENT_BUS.add_consumer(UserRegistrationConsumer.new(DB[:users], DB[:user_password_change_requests]))
+  EVENT_BUS.add_consumer(PGEventStoreConsumer.new(repository))
+  EVENT_BUS.add_consumer(UserRegistrationConsumer.new(repository))
 
   enable :sessions
 end
@@ -48,11 +52,12 @@ post "/user/request-change-password" do
 end
 
 post "/user/reset-password" do
-  if row = DB[:user_password_change_requests][token: params[:user][:token]]
+  user_password_change_request = repository.find_user_password_change_request_by_token(params[:user][:token])
+  if user_password_change_request
     event = create_event(UserPasswordReset,
-      email: row.fetch(:email),
-      token: row.fetch(:token),
-      new_encrypted_password: params[:user][:password],
+                         user_id: user_password_change_request.user_id,
+                         token: user_password_change_request.token,
+                         new_encrypted_password: params[:user][:password],
     )
 
     event_bus.publish(event)
