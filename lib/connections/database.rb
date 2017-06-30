@@ -2,8 +2,11 @@ require "logger"
 require "repository"
 require "sequel"
 
-LOGGER = Logger.new(ENV["RACK_ENV"] == "test" ? "log/test.log" : STDOUT)
+LOGGER = Logger.new(ENV["RACK_ENV"] == "test" ? "log/test.log" : STDERR)
 LOGGER.level = Logger::DEBUG
+LOGGER.formatter = ->(severity, _, _, msg) do
+  "[#{"%-5s" % severity}] #{File.basename($0)}:#{Process.pid} - #{msg}\n"
+end
 
 def logger
   LOGGER

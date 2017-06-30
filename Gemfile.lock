@@ -49,6 +49,7 @@ GEM
     mime-types-data (3.2016.0521)
     mustermann (1.0.0)
     pg (0.21.0)
+    puma (3.9.1)
     rack (2.0.3)
     rack-protection (2.0.0)
       rack
@@ -90,6 +91,7 @@ DEPENDENCIES
   dry-validation
   mail
   pg
+  puma
   rake
   rspec
   sequel

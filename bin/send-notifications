@@ -42,6 +42,7 @@ class Notifier
     notify_all(notifiers.keys)
 
     while running
+      logger.info "Waiting for notifications"
       DB.listen(notifiers.keys, loop: true) do |channel, _, _|
         break if !running
 
@@ -75,11 +76,12 @@ class Notifier
     requests.each do |seq, request|
       DB.transaction do
         repository.set_password_reset_requests_worker_state(seq)
+        url = "#{base_url}/?token=#{CGI.escape(request.token)}"
         mail = Mail.new do
           from "Ponzi <hello@ponzi.com>"
           to request.email
           subject "Ponzi Password Reset Request"
-          body "Greetings, human!\n\nYou requested a password reset from Ponzi. Please visit the following URL to reset your password:\n\n    http://localhost:4567/?token=#{CGI.escape(request.token)}\n\nHave a wonderful day!"
+          body "Greetings, human!\n\nYou requested a password reset from Ponzi. Please visit the following URL to reset your password:\n\n    #{url}\n\nHave a wonderful day!"
         end
 
         send_mail(mail)
@@ -127,8 +129,13 @@ class Notifier
   def repository
     REPOSITORY
   end
+
+  def base_url
+    ENV.fetch("BASE_URL")
+  end
 end
 
+logger.info "Getting ready to run notifiers"
 Notifier.new.run(
   UserRegistered.name              => :send_pending_welcome_emails,
   UserPasswordChangeRequested.name => :send_pending_password_change_requested_emails,

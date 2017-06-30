@@ -11,6 +11,7 @@ gem "sequel_pg", require: false
 
 group :web do
   gem "dry-validation"
+  gem "puma"
   gem "sinatra", require: false
 end
 
