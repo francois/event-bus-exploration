@@ -15,6 +15,17 @@ class Repository
     @db[:user_password_change_requests].insert(attributes)
   end
 
+  def delete_user_password_change_requests_by_email(email)
+    attributes = @db.from(:user_password_change_requests, :users)
+      .returning(:user_password_change_request_id, :users__email, :user_id, :token, :user_slug)
+      .where(users__email: :user_password_change_requests__email) # JOIN condition
+      .where(users__email: email)
+      .delete
+      .first
+
+    UserPasswordChangeRequest.new(attributes) if attributes
+  end
+
   # @return UserPasswordChangeRequest
   def delete_user_password_change_requests_by_token(token)
     attributes = @db.from(:user_password_change_requests, :users)

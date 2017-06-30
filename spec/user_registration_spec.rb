@@ -40,6 +40,16 @@ RSpec.describe UserRegistrationConsumer do
         token: "a token",
       ).once
     end
+
+    it "deletes existing user password change requests for the same user" do
+      event = UserPasswordChangeRequested.new(
+        email: "john@smith.org",
+        token: "a token",
+      )
+      subject.consume_user_password_change_requested(event)
+
+      expect(repository).to have_received(:delete_user_password_change_requests_by_email).with("john@smith.org")
+    end
   end
 
   describe UserPasswordReset do

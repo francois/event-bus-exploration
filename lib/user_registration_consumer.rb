@@ -13,6 +13,7 @@ class UserRegistrationConsumer
   end
 
   def consume_user_password_change_requested(event)
+    @repository.delete_user_password_change_requests_by_email(event.email)
     @repository.create_user_password_change_request(
       email: event.email,
       token: event.token,
