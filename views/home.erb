@@ -1,33 +1,41 @@
-<h1>Register</h1>
-<form method="post" action="/signup">
-  <label>Name <input type="text" name="user[name]" value=""></label>
-  <br>
-  <label>Email <input type="email" name="user[email]" value=""></label>
-  <br>
-  <label>Password <input type="password" name="user[password]" value=""></label>
-  <br>
-  <label>Password confirmation <input type="password" name="user[password_confirmation]" value=""></label>
-  <br>
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>Ponzi</title>
+  </head>
+  <body>
+    <h1>Register</h1>
+    <form method="post" action="/signup">
+      <label>Name <input type="text" name="user[name]" value=""></label>
+      <br>
+      <label>Email <input type="email" name="user[email]" value=""></label>
+      <br>
+      <label>Password <input type="password" name="user[password]" value=""></label>
+      <br>
+      <label>Password confirmation <input type="password" name="user[password_confirmation]" value=""></label>
+      <br>
 
-  <input type="submit" value="Register">
-</form>
+      <input type="submit" value="Register">
+    </form>
 
-<h1>Request Reset Password Token</h1>
-<form method="post" action="/user/request-change-password">
-  <label>Email <input type="email" name="user[email]" value=""></label>
-  <br>
+    <h1>Request Reset Password Token</h1>
+    <form method="post" action="/user/request-change-password">
+      <label>Email <input type="email" name="user[email]" value=""></label>
+      <br>
 
-  <input type="submit" value="Register">
-</form>
+      <input type="submit" value="Register">
+    </form>
 
-<h1>Reset Password</h1>
-<form method="post" action="/user/reset-password">
-  <label>Token <input type="text" name="user[token]" value="<%= @token %>"></label>
-  <br>
-  <label>Password <input type="password" name="user[password]" value=""></label>
-  <br>
-  <label>Password confirmation <input type="password" name="user[password_confirmation]" value=""></label>
-  <br>
+    <h1>Reset Password</h1>
+    <form method="post" action="/user/reset-password">
+      <label>Token <input type="text" name="user[token]" value="<%= @token %>"></label>
+      <br>
+      <label>Password <input type="password" name="user[password]" value=""></label>
+      <br>
+      <label>Password confirmation <input type="password" name="user[password_confirmation]" value=""></label>
+      <br>
 
-  <input type="submit" value="Register">
-</form>
+      <input type="submit" value="Register">
+    </form>
+  </body>
+</html>
