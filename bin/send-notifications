@@ -1,0 +1,136 @@
+#!/usr/bin/env ruby -Ilib
+require "bundler"
+Bundler.require :notifiers, :default, :development
+
+begin
+  require "dotenv"
+  Dotenv.load ".env", ".env.development"
+rescue LoadError
+  # NOP, we're running in production
+end
+
+require "cgi"
+require "connections/database"
+require "user_password_change_requested"
+require "user_password_reset"
+require "user_registered"
+
+class Notifier
+  # Waits for UserPasswordChangeRequested events and sends the corresponding emails.
+  #
+  # UserPasswordChangeRequested events have the following payload:
+  #
+  #     {
+  #       "email": "francois@teksol.info",
+  #       "token": "FQBhMT_hcHD5jAXmfRMnkYr94MpkzeKcPgGcgz8YAzHqldDexPlFVxMECoGzgjAv34yLvTRjJmGZYCCVbdpLSw",
+  #       "event_id": "0a221d19-c9bc-4fce-95df-b03861f807e2",
+  #       "created_at": "2017-06-29 20:41:04 -0400",
+  #       "request_ip": "::1",
+  #       "session_id": "f900ceba0600eb0098abfde8f5dc9932937b0e093685124b091dcebb2c729467",
+  #       "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6) AppleWebKit/603.2.5 (KHTML, like Gecko) Version/10.1.1 Safari/603.2.5"
+  #     }
+  #
+  # @return [Void]
+  def run(notifiers)
+    raise ArgumentError, "notifiers was empty/nil, must contain symbols that represent methods to call" if notifiers.nil? || notifiers.empty?
+    raise ArgumentError, "notifier keys must all be String instances"   unless notifiers.keys.all?{|key| key.kind_of?(String)}
+    raise ArgumentError, "notifier values must all be Symbol instances" unless notifiers.values.all?{|key| key.kind_of?(Symbol)}
+
+    running = true
+    trap("TERM") { running = false }
+
+    notify_all(notifiers.keys)
+
+    while running
+      DB.listen(notifiers.keys, loop: true) do |channel, _, _|
+        break if !running
+
+        selector = notifiers[channel]
+        public_send(selector) if selector
+      end
+    end
+  end
+
+  def send_pending_welcome_emails
+    last_seen_sequence = repository.get_welcome_email_worker_state
+    requests = repository.find_user_registration_events_after(last_seen_sequence)
+    requests.each do |seq, request|
+      DB.transaction do
+        repository.set_welcome_email_worker_state(seq)
+        mail = Mail.new do
+          from "Ponzi <hello@ponzi.com>"
+          to request.email
+          subject "Welcome to Ponzi"
+          body "Greetings, human!\n\nYou registered for an account at Ponzi. Thank you for your time!\n\nHave a wonderful day!"
+        end
+
+        send_mail(mail)
+      end
+    end
+  end
+
+  def send_pending_password_change_requested_emails
+    last_seen_sequence = repository.get_password_reset_requests_worker_state
+    requests = repository.find_user_password_change_requests_after(last_seen_sequence)
+    requests.each do |seq, request|
+      DB.transaction do
+        repository.set_password_reset_requests_worker_state(seq)
+        mail = Mail.new do
+          from "Ponzi <hello@ponzi.com>"
+          to request.email
+          subject "Ponzi Password Reset Request"
+          body "Greetings, human!\n\nYou requested a password reset from Ponzi. Please visit the following URL to reset your password:\n\n    http://localhost:4567/?token=#{CGI.escape(request.token)}\n\nHave a wonderful day!"
+        end
+
+        send_mail(mail)
+      end
+    end
+  end
+
+  def send_pending_password_reset_emails
+    last_seen_sequence = repository.get_password_resets_worker_state
+    requests = repository.find_user_password_resets_after(last_seen_sequence)
+    requests.each do |seq, request|
+      DB.transaction do
+        repository.set_password_resets_worker_state(seq)
+        mail = Mail.new do
+          from "Ponzi <hello@ponzi.com>"
+          to request.email
+          subject "Ponzi Password Reset"
+          body "Greetings, human!\n\nA successful password reset was executed on this email address. If this was an error, please contact us to rectify the situation.\n\nHave a wonderful day!"
+        end
+
+        send_mail(mail)
+      end
+    end
+  end
+
+  def send_mail(mail)
+    logger.info mail.to_s
+    sleep 0.25 + rand() * 0.25
+    logger.info "Email sent!"
+  end
+
+  # Triggers a notification in the DB for every named key.
+  #
+  # @param notifier_keys [Array<String>] The list of keys we wish to trigger notifications for.
+  # @return [Void] Nothing useful
+  def notify_all(notifier_keys)
+    Thread.start(notifier_keys) do |keys|
+      sleep 1 # let the call to #listen occur
+      keys.each do |key|
+        DB.run DB["NOTIFY #{key.inspect}"].sql
+      end
+    end
+  end
+
+  def repository
+    REPOSITORY
+  end
+end
+
+Notifier.new.run(
+  UserRegistered.name              => :send_pending_welcome_emails,
+  UserPasswordChangeRequested.name => :send_pending_password_change_requested_emails,
+  UserPasswordReset.name           => :send_pending_password_reset_emails,
+)
