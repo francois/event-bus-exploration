@@ -58,6 +58,7 @@ RSpec.describe UserRegistrationConsumer do
       allow(repository).to receive(:delete_user_password_change_requests_by_token).
         and_return(UserPasswordChangeRequest.new(
           user_password_change_request_id: 203,
+          email: email,
           user_id: user_id,
           token: token,
           user_slug: "dg",

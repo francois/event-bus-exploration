@@ -10,6 +10,7 @@ def logger
 end
 
 DB = Sequel.connect(ENV.fetch("DATABASE_URL"), logger: logger)
+DB.extension :auto_literal_strings
 DB.extension :pg_array, :pg_json
 
 # Enable :a__b => "a"."b"

@@ -1,5 +1,5 @@
 require "bundler"
-Bundler.require :default, :development
+Bundler.require :web, :default, :development
 
 require "dotenv"
 Dotenv.load ".env", ".env.development"
@@ -33,6 +33,7 @@ class App < Sinatra::Base
   end
 
   get "/" do
+    @token = params[:token]
     erb :home
   end
 
@@ -76,6 +77,7 @@ class App < Sinatra::Base
       if user_password_change_request
         password_reset_values = form.output.merge(
           user_id: user_password_change_request.user_id,
+          email: user_password_change_request.email,
           token: user_password_change_request.token,
           new_encrypted_password: BCrypt::Password.create(form.output[:password]),
           password: nil,

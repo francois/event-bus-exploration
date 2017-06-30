@@ -1,0 +1,2 @@
+#!/bin/bash
+dotenv irb -Ilib -r connections/database
