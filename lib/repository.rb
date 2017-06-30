@@ -36,7 +36,7 @@ class Repository
   end
 
   def find_user_password_change_request_by_token(token)
-    row = @db[:user_password_change_requests].join(@db[:users], [:email])[token: token]
+    row = @db[:user_password_change_requests].join(:users, [:email])[token: token]
     UserPasswordChangeRequest.new(row) if row
   end
 
