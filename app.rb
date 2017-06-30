@@ -7,10 +7,11 @@ Dotenv.load ".env", ".env.development"
 require "connections/database"
 require "event_bus"
 require "pg_event_serializer"
+require "transactional_event_bus"
 require "user_password_change_requested"
+require "user_password_reset"
 require "user_registered"
 require "user_registration_consumer"
-require "user_password_reset"
 
 def event_bus
   EVENT_BUS
@@ -21,7 +22,7 @@ def repository
 end
 
 configure do
-  EVENT_BUS = EventBus.new
+  EVENT_BUS = TransactionalEventBus.new(event_bus: EventBus.new, db: DB)
   EVENT_BUS.add_consumer(PGEventStoreConsumer.new(repository))
   EVENT_BUS.add_consumer(UserRegistrationConsumer.new(repository))
 
