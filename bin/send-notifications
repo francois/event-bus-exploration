@@ -1,6 +1,8 @@
-#!/usr/bin/env ruby -Ilib
+#!/usr/bin/env ruby
 require "bundler"
-Bundler.require :notifiers, :default, :development
+Bundler.require :notifiers, :default, ENV.fetch("RACK_ENV", "development").to_sym
+
+$LOAD_PATH.unshift File.expand_path("../../lib", __FILE__)
 
 begin
   require "dotenv"
