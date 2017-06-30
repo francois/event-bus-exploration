@@ -6,6 +6,9 @@ Dotenv.load ".env", ".env.development"
 
 require "connections/database"
 require "event_bus"
+require "forms/request_password_reset_token"
+require "forms/user_registration"
+require "forms/reset_password"
 require "pg_event_serializer"
 require "sinatra/base"
 require "transactional_event_bus"
@@ -34,36 +37,57 @@ class App < Sinatra::Base
   end
 
   post "/signup" do
-    event = create_event(UserRegistered,
-                         email: params[:user][:email],
-                         name: params[:user][:name],
-                         encrypted_password: params[:user][:password].succ,
-                        )
+    form = Forms::UserRegistration.call(params[:user])
+    if form.success?
+      registration_values =
+        form.output.merge(
+          encrypted_password: BCrypt::Password.create(form.output[:password]),
+          password: nil,
+          password_confirmation: nil)
 
-    event_bus.publish(event)
+      event = create_event(
+        UserRegistered,
+        registration_values)
+
+      event_bus.publish(event)
+    else
+      logger.warn form.errors.inspect
+    end
+
     redirect "/"
   end
 
   post "/user/request-change-password" do
-    event = create_event(UserPasswordChangeRequested,
-                         email: params[:user][:email],
-                        )
-    event_bus.publish(event)
+    form = Forms::RequestPasswordResetToken.call(params[:user])
+    if form.success?
+      event = create_event(UserPasswordChangeRequested, form.output)
+      event_bus.publish(event)
+    else
+      logger.warn form.errors.inspect
+    end
+
     redirect "/"
   end
 
   post "/user/reset-password" do
-    user_password_change_request = repository.find_user_password_change_request_by_token(params[:user][:token])
-    if user_password_change_request
-      event = create_event(UserPasswordReset,
-                           user_id: user_password_change_request.user_id,
-                           token: user_password_change_request.token,
-                           new_encrypted_password: params[:user][:password],
-                          )
+    form = Forms::ResetPassword.call(params[:user])
+    if form.success?
+      user_password_change_request = repository.find_user_password_change_request_by_token(form.output[:token])
+      if user_password_change_request
+        password_reset_values = form.output.merge(
+          user_id: user_password_change_request.user_id,
+          token: user_password_change_request.token,
+          new_encrypted_password: BCrypt::Password.create(form.output[:password]),
+          password: nil,
+          password_confirmation: nil)
 
-      event_bus.publish(event)
+        event = create_event(UserPasswordReset, password_reset_values)
+        event_bus.publish(event)
+      else
+        logger.warn "Failed to find token #{params[:user][:token]}"
+      end
     else
-      logger.warn "Failed to find token #{params[:user][:token]}"
+      logger.warn form.errors.inspect
     end
 
     redirect "/"
