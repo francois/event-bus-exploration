@@ -1,5 +1,13 @@
-require "dotenv/tasks"
 require "uri"
+
+begin
+  require "dotenv/tasks"
+rescue LoadError
+  # NOP: we're in production
+  task :dotenv do
+    # NOP
+  end
+end
 
 namespace :db do
   task :migrate => :dotenv do

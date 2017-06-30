@@ -1,8 +1,12 @@
 require "bundler"
 Bundler.require :web, :default, :development
 
-require "dotenv"
-Dotenv.load ".env", ".env.development"
+begin
+  require "dotenv"
+  Dotenv.load ".env", ".env.development"
+rescue LoadError
+  # NOP, running in production
+end
 
 require "connections/database"
 require "event_bus"
