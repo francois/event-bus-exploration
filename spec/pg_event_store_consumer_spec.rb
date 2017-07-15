@@ -1,4 +1,4 @@
-require "pg_event_serializer"
+require "pg_event_store_consumer"
 require "repository"
 require "spec_helper"
 require "user_registered"

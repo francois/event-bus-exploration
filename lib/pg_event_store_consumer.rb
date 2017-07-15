@@ -1,5 +1,3 @@
-require "json"
-
 class PGEventStoreConsumer
   def initialize(repository)
     @repository = repository
