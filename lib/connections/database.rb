@@ -23,4 +23,5 @@ DB.extension :pg_array, :pg_json
 # Enable :a__b => "a"."b"
 Sequel.split_symbols = true
 
+DB.run DB["SET timezone TO ?", "Etc/UTC"].sql
 REPOSITORY = Repository.new(DB)
