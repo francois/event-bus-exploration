@@ -7,9 +7,9 @@ class TransactionalEventBus
     @event_bus.add_consumer(consumer)
   end
 
-  def publish(event)
+  def publish(event, replay: false)
     @db.transaction do
-      @event_bus.publish(event)
+      @event_bus.publish(event, replay: replay)
     end
   end
 end

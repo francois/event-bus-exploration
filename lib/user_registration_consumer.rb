@@ -3,7 +3,7 @@ class UserRegistrationConsumer
     @repository = repository
   end
 
-  def consume_user_registered(event)
+  def consume_user_registered(event, replay: false)
     @repository.create_user(
       email: event.email,
       encrypted_password: event.encrypted_password,
@@ -12,7 +12,7 @@ class UserRegistrationConsumer
     )
   end
 
-  def consume_user_password_change_requested(event)
+  def consume_user_password_change_requested(event, replay: false)
     @repository.delete_user_password_change_requests_by_email(event.email)
     @repository.create_user_password_change_request(
       email: event.email,
@@ -20,7 +20,7 @@ class UserRegistrationConsumer
     )
   end
 
-  def consume_user_password_reset(event)
+  def consume_user_password_reset(event, replay: false)
     user_password_change_request = @repository.delete_user_password_change_requests_by_token(event.token)
     @repository.update_user(user_password_change_request.user_id, encrypted_password: event.new_encrypted_password)
   end

@@ -7,12 +7,12 @@ class EventBus
     @consumers << consumer
   end
 
-  def publish(event)
+  def publish(event, replay: false)
     @consumers.each do |consumer|
-      consumer.consume(event) if consumer.respond_to?(:consume)
+      consumer.consume(event, replay: replay) if consumer.respond_to?(:consume)
 
       selector = :"consume_#{underscore(event.class.name)}"
-      consumer.public_send(selector, event) if consumer.respond_to?(selector)
+      consumer.public_send(selector, event, replay: replay) if consumer.respond_to?(selector)
     end
   end
 

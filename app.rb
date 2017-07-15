@@ -9,21 +9,14 @@ rescue LoadError
 end
 
 require "connections/database"
-require "event_bus"
+require "connections/event_bus"
 require "forms/request_password_reset_token"
 require "forms/user_registration"
 require "forms/reset_password"
-require "pg_event_store_consumer"
 require "sinatra/base"
-require "transactional_event_bus"
 require "user_password_change_requested"
 require "user_password_reset"
 require "user_registered"
-require "user_registration_consumer"
-
-EVENT_BUS = TransactionalEventBus.new(event_bus: EventBus.new, db: DB)
-EVENT_BUS.add_consumer(PGEventStoreConsumer.new(REPOSITORY))
-EVENT_BUS.add_consumer(UserRegistrationConsumer.new(REPOSITORY))
 
 class App < Sinatra::Base
   enable :sessions

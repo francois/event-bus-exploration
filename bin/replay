@@ -1,0 +1,95 @@
+#!/usr/bin/env ruby
+require "bundler"
+Bundler.require :notifiers, :default, ENV.fetch("RACK_ENV", "development").to_sym
+
+$LOAD_PATH.unshift File.expand_path("../../lib", __FILE__)
+
+begin
+  require "dotenv"
+  Dotenv.load ".env", ".env.development"
+rescue LoadError
+  # NOP, we're running in production
+end
+
+require "connections/database"
+require "connections/event_bus"
+require "json"
+require "optparse"
+require "time"
+require "user_password_change_requested"
+require "user_password_reset"
+require "user_registered"
+
+def main(options)
+  logger.debug "Replaying with options #{options.inspect}"
+  DB.transaction(rollback: options[:dry_run] ? :always : nil) do
+    delete_all_records_except_notification_states_and_events
+    each_event_up_to_and_excluding(options) do |event|
+      logger.debug event.class.name
+      event_bus.publish(event, replay: true)
+    end
+  end
+end
+
+def delete_all_records_except_notification_states_and_events
+  excluded = %i[ events worker_states schema_migrations ]
+  DB.tables.reject{|name| excluded.include?(name)}.each do |name|
+    DB[name].delete
+  end
+end
+
+def each_event_up_to_and_excluding(options, &block)
+  scope = DB[:events].order(:seq)
+  scope = scope.where("seq >= ?", options[:start_at_event_id])
+  scope = scope.where("seq < ?", options[:cutoff_event_id]) if options[:cutoff_event_id]
+  scope = scope.where("created_at >= ?", options[:start_at].utc)
+  scope = scope.where("created_at < ?", options[:cutoff_at].utc)
+  scope.paged_each(strategy: :filter) do |row|
+    event_klass = Object.const_get(row.fetch(:kind))
+    event = event_klass.new(symbolize_keys(row.fetch(:payload)))
+    block.call event
+  end
+end
+
+def symbolize_keys(hash)
+  hash.map do |key, value|
+    [key.to_sym, value]
+  end.to_h
+end
+
+
+def event_bus
+  EVENT_BUS
+end
+
+options = {
+  cutoff_at: Time.now.utc,
+  cutoff_event_id: nil,
+  dry_run: true,
+  start_at: Time.at(0),
+  start_at_event_id: -1,
+}
+
+OptionParser.new do |o|
+  o.on("--start-at=YYYY-MM-DDTHH:MM:SSZ", "Parses the given time and executes events at this timestamp or later") do |time_str|
+    options[:start_at] = Time.parse(time_str).utc
+  end
+
+  o.on("--cutoff-at=YYYY-MM-DDTHH:MM:SSZ", "Parses the given time and executes events up to and EXCLUDING this event") do |time_str|
+    options[:cutoff_at] = Time.parse(time_str).utc
+  end
+
+  o.on("--start-at-event-id=N", Integer, "Replays events starting at this ID") do |id|
+    options[:start_at_event_id] = id
+  end
+
+  o.on("--cutoff-event-id=N", Integer, "Replays all events up to and EXCLUDING this event") do |id|
+    options[:cutoff_event_id] = id
+  end
+
+  o.on("--[no-]dry-run", "Runs the transaction for real, really changing the database (else, everything is made in a transaction and rolled back at the end") do |bool|
+    options[:dry_run] = bool
+  end
+end.parse!
+
+main(options)
