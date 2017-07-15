@@ -1,5 +1,6 @@
 require "repository"
 require "spec_helper"
+require "user_registered"
 
 RSpec.describe Repository do
   subject{ Repository.new(DB) }
