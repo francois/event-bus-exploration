@@ -10,7 +10,7 @@ RSpec.describe BaseEvent do
 
   describe "#created_at" do
     it "defaults to \"now\"" do
-      expect(subject.created_at).not_to be_nil
+      expect((Time.now - 1) .. (Time.now + 1)).to include(subject.created_at)
     end
   end
 end
