@@ -12,7 +12,11 @@ def logger
   LOGGER
 end
 
-DB = Sequel.connect(ENV.fetch("DATABASE_URL"), logger: logger)
+database_url = ENV.fetch("DATABASE_URL")
+raise ArgumentError, "This application requires a PostgreSQL database instance; found #{database_url}}" unless database_url[/^postgres/]
+DB = Sequel.connect(database_url, logger: logger)
+version = DB["SELECT version()"].select_map(:version).first
+raise ArgumentError, "This application requires a PostgreSQL 9.6+ cluster; found #{version}" unless version[/^PostgreSQL (?:10[.]|9[.]6)/]
 DB.extension :auto_literal_strings
 DB.extension :pg_array, :pg_json
 
