@@ -3,7 +3,7 @@ class PGEventStoreConsumer
     @repository = repository
   end
 
-  def consume(event)
-    @repository.create_event(event)
+  def consume(event, replay: false)
+    @repository.create_event(event) unless replay
   end
 end
